@@ -40,6 +40,14 @@ interface FinnhubProfileResponse {
   currency?: string;
 }
 
+interface FinnhubMetricResponse {
+  metric?: {
+    '52WeekHigh'?: number;
+    '52WeekLow'?: number;
+    '10DayAverageTradingVolume'?: number;
+  };
+}
+
 @Injectable()
 export class FinnhubProvider implements MarketDataProvider {
   readonly name = 'finnhub';
@@ -74,12 +82,15 @@ export class FinnhubProvider implements MarketDataProvider {
 
   async getOverview(symbol: string): Promise<StockOverview> {
     const token = this.requireApiKey();
-    const [quoteRes, profileRes] = await Promise.all([
+    const [quoteRes, profileRes, metricRes] = await Promise.all([
       fetch(
         `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${token}`,
       ),
       fetch(
         `https://finnhub.io/api/v1/stock/profile2?symbol=${encodeURIComponent(symbol)}&token=${token}`,
+      ),
+      fetch(
+        `https://finnhub.io/api/v1/stock/metric?symbol=${encodeURIComponent(symbol)}&metric=all&token=${token}`,
       ),
     ]);
 
@@ -91,6 +102,9 @@ export class FinnhubProvider implements MarketDataProvider {
     const profile = profileRes.ok
       ? ((await profileRes.json()) as FinnhubProfileResponse)
       : {};
+    const metrics = metricRes.ok
+      ? ((await metricRes.json()) as FinnhubMetricResponse).metric
+      : undefined;
 
     const quote = this.mapQuote(symbol, quoteData, profile.currency);
     return {
@@ -102,7 +116,33 @@ export class FinnhubProvider implements MarketDataProvider {
         ? profile.marketCapitalization * 1_000_000
         : undefined,
       quote,
+      fiftyTwoWeekHigh: metrics?.['52WeekHigh'],
+      fiftyTwoWeekLow: metrics?.['52WeekLow'],
       provider: this.name,
+    };
+  }
+
+  /**
+   * Lightweight profile lookup used to enrich overviews served by other
+   * providers (e.g. Yahoo has no market cap on its free endpoint).
+   */
+  async getProfileEnrichment(symbol: string): Promise<Partial<StockOverview>> {
+    const token = this.requireApiKey();
+    const response = await fetch(
+      `https://finnhub.io/api/v1/stock/profile2?symbol=${encodeURIComponent(symbol)}&token=${token}`,
+    );
+    if (!response.ok) {
+      throw new ServerError(`Finnhub profile failed (${response.status})`);
+    }
+
+    const profile = (await response.json()) as FinnhubProfileResponse;
+    return {
+      name: profile.name,
+      exchange: profile.exchange,
+      industry: profile.finnhubIndustry,
+      marketCap: profile.marketCapitalization
+        ? profile.marketCapitalization * 1_000_000
+        : undefined,
     };
   }
 
