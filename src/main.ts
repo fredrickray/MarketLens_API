@@ -2,11 +2,29 @@ import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import helmet from 'helmet';
+import session from 'express-session';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
+
+  app.use(cookieParser());
+  app.use(
+    session({
+      secret: config.getOrThrow<string>('SESSION_SECRET'),
+      resave: false,
+      saveUninitialized: false,
+      name: 'marketlens.sid',
+      cookie: {
+        maxAge: 10 * 60 * 1000,
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: config.get<string>('NODE_ENV') === 'production',
+      },
+    }),
+  );
 
   app.use(helmet());
 

@@ -109,4 +109,59 @@ export class UsersService {
       $set: { loginAttempts: 0, loginCooldown: null },
     });
   }
+
+  async findOrCreateFromGoogle(params: {
+    googleId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+  }): Promise<UserDocument> {
+    const email = params.email.toLowerCase().trim();
+
+    const byGoogle = await this.userModel
+      .findOne({ googleId: params.googleId })
+      .exec();
+    if (byGoogle) {
+      return byGoogle;
+    }
+
+    const existing = await this.userModel.findOne({ email }).exec();
+    if (existing) {
+      if (existing.googleId && existing.googleId !== params.googleId) {
+        throw new Conflict('This email is linked to another Google account.');
+      }
+      existing.googleId = params.googleId;
+      existing.isVerified = true;
+      if (!existing.firstName?.trim()) {
+        existing.firstName = params.firstName.trim();
+      }
+      if (!existing.lastName?.trim()) {
+        existing.lastName = params.lastName.trim();
+      }
+      await existing.save();
+      return existing;
+    }
+
+    try {
+      const created = await this.userModel.create({
+        googleId: params.googleId,
+        email,
+        firstName: params.firstName.trim(),
+        lastName: params.lastName.trim(),
+        isVerified: true,
+        passwordHash: null,
+      });
+      return created;
+    } catch (err: unknown) {
+      const isDup =
+        typeof err === 'object' &&
+        err !== null &&
+        'code' in err &&
+        (err as { code?: number }).code === 11000;
+      if (isDup) {
+        throw new Conflict('Unable to create account from Google profile.');
+      }
+      throw err;
+    }
+  }
 }

@@ -3,11 +3,15 @@ import {
   RequestMethod,
   ValidationPipe,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
+import cookieParser from 'cookie-parser';
 import type { Server } from 'http';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import request from 'supertest';
+import session from 'express-session';
 import { OtpService } from '../src/v1/auth/otp.service';
+import { OAuthExchangeService } from '../src/v1/auth/oauth-exchange.service';
 
 jest.setTimeout(180000);
 
@@ -31,6 +35,7 @@ type RegisterBody = { message: string; email: string };
 
 describe('App (e2e)', () => {
   let app: INestApplication | undefined;
+  let moduleRef: TestingModule | undefined;
   let mongo: MongoMemoryServer;
 
   beforeAll(async () => {
@@ -40,6 +45,7 @@ describe('App (e2e)', () => {
     process.env.MONGODB_URI = mongo.getUri();
     process.env.JWT_SECRET = 'e2e-jwt-secret-at-least-16';
     process.env.JWT_EXPIRES_IN = '1h';
+    process.env.SESSION_SECRET = 'e2e-session-secret-min-16-chars';
   });
 
   afterAll(async () => {
@@ -67,7 +73,24 @@ describe('App (e2e)', () => {
       })
       .compile();
 
+    moduleRef = moduleFixture;
     app = moduleFixture.createNestApplication();
+    const cfg = app.get(ConfigService);
+    app.use(cookieParser());
+    app.use(
+      session({
+        secret: cfg.getOrThrow<string>('SESSION_SECRET'),
+        resave: false,
+        saveUninitialized: false,
+        name: 'marketlens.sid',
+        cookie: {
+          maxAge: 10 * 60 * 1000,
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: false,
+        },
+      }),
+    );
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -90,6 +113,7 @@ describe('App (e2e)', () => {
       await app.close();
       app = undefined;
     }
+    moduleRef = undefined;
   });
 
   it('/health (GET)', () => {
@@ -100,6 +124,19 @@ describe('App (e2e)', () => {
         expect(res.body).toHaveProperty('status', 'ok');
         expect(res.body).toHaveProperty('timestamp');
       });
+  });
+
+  it('GET /v1/auth/google returns 503 when Google OAuth is not configured', async () => {
+    await request(app!.getHttpServer() as Server)
+      .get('/v1/auth/google')
+      .expect(503);
+  });
+
+  it('POST /v1/auth/oauth/exchange rejects invalid code', async () => {
+    await request(app!.getHttpServer() as Server)
+      .post('/v1/auth/oauth/exchange')
+      .send({ code: 'not-a-real-exchange-code-value' })
+      .expect(400);
   });
 
   it('register → verify-email → login → me', async () => {
@@ -156,5 +193,68 @@ describe('App (e2e)', () => {
         password,
       })
       .expect(409);
+  });
+
+  it('verify-email sets cookie; /me works via HTTP-only cookie', async () => {
+    const agent = request.agent(app!.getHttpServer() as Server);
+    const email = `cookie-${Date.now()}@example.com`;
+    const password = 'password123';
+
+    await agent
+      .post('/v1/auth/register')
+      .send({
+        firstName: 'Cookie',
+        lastName: 'User',
+        email,
+        password,
+      })
+      .expect(201);
+
+    await agent
+      .post('/v1/auth/verify-email')
+      .send({ email, otp: '123456' })
+      .expect(200);
+
+    await agent
+      .get('/v1/auth/me')
+      .expect(200)
+      .expect((res) => {
+        const me = res.body as MeBody;
+        expect(me.email).toBe(email.toLowerCase());
+      });
+  });
+
+  it('oauth exchange code returns tokens and cookie', async () => {
+    const email = `ox-${Date.now()}@example.com`;
+    const password = 'password123';
+
+    await request(app!.getHttpServer() as Server)
+      .post('/v1/auth/register')
+      .send({
+        firstName: 'Ox',
+        lastName: 'User',
+        email,
+        password,
+      })
+      .expect(201);
+
+    const verify = await request(app!.getHttpServer() as Server)
+      .post('/v1/auth/verify-email')
+      .send({ email, otp: '123456' })
+      .expect(200);
+
+    const userId = (verify.body as AuthSuccessBody).user.id;
+    const ox = moduleRef!.get(OAuthExchangeService);
+    const { code } = await ox.issueCodeForUserId(userId);
+
+    const agent = request.agent(app!.getHttpServer() as Server);
+    await agent.post('/v1/auth/oauth/exchange').send({ code }).expect(200);
+
+    await agent
+      .get('/v1/auth/me')
+      .expect(200)
+      .expect((res) => {
+        expect((res.body as MeBody).email).toBe(email.toLowerCase());
+      });
   });
 });
