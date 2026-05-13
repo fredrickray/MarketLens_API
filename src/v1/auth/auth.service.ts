@@ -17,6 +17,7 @@ import type { ResendOtpDto } from './dto/resend-otp.dto';
 import type { VerifyEmailDto } from './dto/verify-email.dto';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
 import { OtpService } from './otp.service';
+import { OAuthExchangeService } from './oauth-exchange.service';
 
 export interface AuthResponse {
   accessToken: string;
@@ -48,6 +49,7 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly mail: MailService,
     private readonly otp: OtpService,
+    private readonly oauthExchange: OAuthExchangeService,
   ) {
     this.maxLoginAttempts = this.config.get<number>('MAX_LOGIN_ATTEMPTS', 5);
     this.loginCooldownMinutes = this.config.get<number>(
@@ -116,8 +118,13 @@ export class AuthService {
 
   async login(dto: LoginDto): Promise<AuthResponse> {
     const user = await this.users.findByEmail(dto.email);
-    if (!user?.passwordHash) {
+    if (!user) {
       throw new Unauthorized('Invalid credentials');
+    }
+    if (!user.passwordHash) {
+      throw new Forbidden(
+        'This account uses Google sign-in. Please sign in with Google.',
+      );
     }
     this.checkLoginCooldown(user);
     if (!user.isVerified) {
@@ -128,6 +135,18 @@ export class AuthService {
       await this.handleInvalidPassword(user);
     }
     await this.users.resetLoginAttempts(String(user._id));
+    return this.buildAuthResponse(user);
+  }
+
+  async exchangeOAuthCode(code: string): Promise<AuthResponse> {
+    const userId = await this.oauthExchange.consumeCode(code);
+    const user = await this.users.findById(userId);
+    await this.users.resetLoginAttempts(userId);
+    return this.issueAuthResponse(user);
+  }
+
+  /** Public helper for Google OAuth callback (and tests). */
+  issueAuthResponse(user: UserDocument): AuthResponse {
     return this.buildAuthResponse(user);
   }
 

@@ -5,8 +5,9 @@ import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { MailService } from '../mail/mail.interface';
 import { AuthService } from './auth.service';
+import { OAuthExchangeService } from './oauth-exchange.service';
 import { OtpService } from './otp.service';
-import { Unauthorized } from '../../core/exceptions/http.errors';
+import { Forbidden, Unauthorized } from '../../core/exceptions/http.errors';
 
 jest.mock('bcrypt', () => ({
   __esModule: true,
@@ -31,6 +32,9 @@ describe('AuthService', () => {
   };
   const mail = { sendMail: jest.fn() };
   const jwt = { sign: jest.fn().mockReturnValue('signed-jwt') };
+  const oauthExchange = {
+    consumeCode: jest.fn(),
+  };
   const config = {
     getOrThrow: jest.fn((key: string) => {
       if (key === 'JWT_EXPIRES_IN') return '7d';
@@ -53,6 +57,7 @@ describe('AuthService', () => {
         { provide: ConfigService, useValue: config },
         { provide: MailService, useValue: mail },
         { provide: OtpService, useValue: otp },
+        { provide: OAuthExchangeService, useValue: oauthExchange },
       ],
     }).compile();
     service = module.get(AuthService);
@@ -97,6 +102,21 @@ describe('AuthService', () => {
       ).rejects.toBeInstanceOf(Unauthorized);
     });
 
+    it('rejects password login for Google-only accounts', async () => {
+      users.findByEmail.mockResolvedValue({
+        _id: '67a1b2c3d4e5f6789012345',
+        email: 'a@b.com',
+        passwordHash: null,
+        role: 'user',
+        isVerified: true,
+        firstName: 'A',
+        lastName: 'B',
+      });
+      await expect(
+        service.login({ email: 'a@b.com', password: 'anything' }),
+      ).rejects.toBeInstanceOf(Forbidden);
+    });
+
     it('throws when password does not match', async () => {
       users.findByEmail.mockResolvedValue({
         _id: '67a1b2c3d4e5f6789012345',
@@ -135,6 +155,24 @@ describe('AuthService', () => {
       expect(out.accessToken).toBe('signed-jwt');
       expect(out.user.id).toBe('67a1b2c3d4e5f6789012345');
       expect(users.resetLoginAttempts).toHaveBeenCalled();
+    });
+  });
+
+  describe('exchangeOAuthCode', () => {
+    it('returns auth after consuming a valid code', async () => {
+      oauthExchange.consumeCode.mockResolvedValue('67a1b2c3d4e5f6789012345');
+      users.findById.mockResolvedValue({
+        _id: '67a1b2c3d4e5f6789012345',
+        email: 'a@b.com',
+        role: 'user',
+        isVerified: true,
+        firstName: 'A',
+        lastName: 'B',
+      });
+      users.resetLoginAttempts.mockResolvedValue(undefined);
+      const out = await service.exchangeOAuthCode('some-code');
+      expect(oauthExchange.consumeCode).toHaveBeenCalledWith('some-code');
+      expect(out.accessToken).toBe('signed-jwt');
     });
   });
 });

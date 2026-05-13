@@ -15,8 +15,11 @@ export class User {
   @Prop({ required: true, unique: true, lowercase: true, trim: true })
   email!: string;
 
-  @Prop({ required: true, select: false })
-  passwordHash!: string;
+  @Prop({ type: String, required: false, default: null, select: false })
+  passwordHash?: string | null;
+
+  @Prop({ unique: true, sparse: true })
+  googleId?: string;
 
   @Prop({ enum: UserRole, default: UserRole.USER })
   role!: UserRole;
