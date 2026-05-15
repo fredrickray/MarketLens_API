@@ -99,7 +99,7 @@ describe('App (e2e)', () => {
         transformOptions: { enableImplicitConversion: true },
       }),
     );
-    app.setGlobalPrefix('v1', {
+    app.setGlobalPrefix('api/v1', {
       exclude: [
         { path: '/', method: RequestMethod.GET },
         { path: 'health', method: RequestMethod.GET },
@@ -126,15 +126,15 @@ describe('App (e2e)', () => {
       });
   });
 
-  it('GET /v1/auth/google returns 503 when Google OAuth is not configured', async () => {
+  it('GET /api/v1/auth/google returns 503 when Google OAuth is not configured', async () => {
     await request(app!.getHttpServer() as Server)
-      .get('/v1/auth/google')
+      .get('/api/v1/auth/google')
       .expect(503);
   });
 
-  it('POST /v1/auth/oauth/exchange rejects invalid code', async () => {
+  it('POST /api/v1/auth/oauth/exchange rejects invalid code', async () => {
     await request(app!.getHttpServer() as Server)
-      .post('/v1/auth/oauth/exchange')
+      .post('/api/v1/auth/oauth/exchange')
       .send({ code: 'not-a-real-exchange-code-value' })
       .expect(400);
   });
@@ -144,7 +144,7 @@ describe('App (e2e)', () => {
     const password = 'password123';
 
     const reg = await request(app!.getHttpServer() as Server)
-      .post('/v1/auth/register')
+      .post('/api/v1/auth/signup')
       .send({
         firstName: 'E2E',
         lastName: 'User',
@@ -158,7 +158,7 @@ describe('App (e2e)', () => {
     expect(regBody.email).toBe(email.toLowerCase());
 
     const verify = await request(app!.getHttpServer() as Server)
-      .post('/v1/auth/verify-email')
+      .post('/api/v1/auth/verify-email')
       .send({ email, otp: '123456' })
       .expect(200);
 
@@ -167,7 +167,7 @@ describe('App (e2e)', () => {
     expect(verifyBody.user.isVerified).toBe(true);
 
     const login = await request(app!.getHttpServer() as Server)
-      .post('/v1/auth/login')
+      .post('/api/v1/auth/signin')
       .send({ email, password })
       .expect(200);
 
@@ -175,7 +175,7 @@ describe('App (e2e)', () => {
     const token = loginBody.accessToken;
 
     await request(app!.getHttpServer() as Server)
-      .get('/v1/auth/me')
+      .get('/api/v1/auth/me')
       .set('Authorization', `Bearer ${token}`)
       .expect(200)
       .expect((res) => {
@@ -185,7 +185,7 @@ describe('App (e2e)', () => {
       });
 
     await request(app!.getHttpServer() as Server)
-      .post('/v1/auth/register')
+      .post('/api/v1/auth/signup')
       .send({
         firstName: 'E2E',
         lastName: 'User',
@@ -201,7 +201,7 @@ describe('App (e2e)', () => {
     const password = 'password123';
 
     await agent
-      .post('/v1/auth/register')
+      .post('/api/v1/auth/signup')
       .send({
         firstName: 'Cookie',
         lastName: 'User',
@@ -211,12 +211,12 @@ describe('App (e2e)', () => {
       .expect(201);
 
     await agent
-      .post('/v1/auth/verify-email')
+      .post('/api/v1/auth/verify-email')
       .send({ email, otp: '123456' })
       .expect(200);
 
     await agent
-      .get('/v1/auth/me')
+      .get('/api/v1/auth/me')
       .expect(200)
       .expect((res) => {
         const me = res.body as MeBody;
@@ -229,7 +229,7 @@ describe('App (e2e)', () => {
     const password = 'password123';
 
     await request(app!.getHttpServer() as Server)
-      .post('/v1/auth/register')
+      .post('/api/v1/auth/signup')
       .send({
         firstName: 'Ox',
         lastName: 'User',
@@ -239,7 +239,7 @@ describe('App (e2e)', () => {
       .expect(201);
 
     const verify = await request(app!.getHttpServer() as Server)
-      .post('/v1/auth/verify-email')
+      .post('/api/v1/auth/verify-email')
       .send({ email, otp: '123456' })
       .expect(200);
 
@@ -248,10 +248,10 @@ describe('App (e2e)', () => {
     const { code } = await ox.issueCodeForUserId(userId);
 
     const agent = request.agent(app!.getHttpServer() as Server);
-    await agent.post('/v1/auth/oauth/exchange').send({ code }).expect(200);
+    await agent.post('/api/v1/auth/oauth/exchange').send({ code }).expect(200);
 
     await agent
-      .get('/v1/auth/me')
+      .get('/api/v1/auth/me')
       .expect(200)
       .expect((res) => {
         expect((res.body as MeBody).email).toBe(email.toLowerCase());

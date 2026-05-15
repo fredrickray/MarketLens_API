@@ -41,7 +41,7 @@ async function bootstrap(): Promise<void> {
       : { origin: true, credentials: true },
   );
 
-  app.setGlobalPrefix('v1', {
+  app.setGlobalPrefix('api/v1', {
     exclude: [
       { path: '/', method: RequestMethod.GET },
       { path: 'health', method: RequestMethod.GET },

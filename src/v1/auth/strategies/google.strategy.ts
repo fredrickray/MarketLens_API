@@ -20,7 +20,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       '__not_configured__';
     const callbackURL =
       config.get<string>('GOOGLE_CALLBACK_URL')?.trim() ||
-      'http://127.0.0.1:1/v1/auth/google/callback';
+      'http://127.0.0.1:1/api/v1/auth/google/callback';
 
     super({
       clientID,
