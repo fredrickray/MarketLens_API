@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Price alert: {{symbol}}</title></head>
+<body style="margin:0;padding:0;background-color:#FAFAF9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#FAFAF9;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;">
+        <tr><td align="center" style="padding-bottom:24px;"><span style="font-size:22px;font-weight:600;color:#141A24;">MarketLens AI</span></td></tr>
+        <tr><td style="background:#FFF;border:1px solid #E8EAED;border-radius:12px;padding:32px;">
+          <p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#DC2626;text-transform:uppercase;">&#9660; Price Below</p>
+          <h1 style="margin:0 0 8px;font-size:28px;font-weight:700;color:#141A24;">{{symbol}} dropped below your target</h1>
+          <p style="margin:0 0 24px;font-size:15px;color:#6B7280;">{{company_name}}</p>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#FAFAF9;border-radius:12px;border:1px solid #E8EAED;margin-bottom:24px;">
+            <tr>
+              <td style="padding:20px;width:50%;"><p style="margin:0;font-size:12px;color:#6B7280;">Current price</p><p style="margin:4px 0 0;font-size:24px;font-weight:700;color:#DC2626;">{{current_price}}</p></td>
+              <td style="padding:20px;width:50%;border-left:1px solid #E8EAED;"><p style="margin:0;font-size:12px;color:#6B7280;">Your alert</p><p style="margin:4px 0 0;font-size:24px;font-weight:700;color:#141A24;">Below {{target_price}}</p></td>
+            </tr>
+          </table>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:16px;"><tr>
+            <td style="background-color:#249B8A;border-radius:12px;"><a href="{{analysis_url}}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#FFF;text-decoration:none;">View AI analysis</a></td>
+            <td style="padding-left:12px;"><a href="{{alerts_url}}" style="font-size:14px;color:#249B8A;text-decoration:none;">Manage alerts</a></td>
+          </tr></table>
+          <p style="margin:0;font-size:12px;color:#9CA3AF;">Triggered at {{triggered_at}} · Alert ID {{alert_id}}</p>
+        </td></tr>
+        <tr><td style="padding:20px 8px 0;text-align:center;"><p style="margin:0;font-size:11px;color:#9CA3AF;">MarketLens AI · Educational only · Not financial advice</p></td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

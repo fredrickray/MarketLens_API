@@ -1,0 +1,11 @@
+<!-- Key body block only — wrap in same outer table as #10 -->
+<p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#F59E0B;text-transform:uppercase;">&#8644; Percent Change</p>
+<h1 style="margin:0 0 8px;font-size:28px;font-weight:700;color:#141A24;">{{symbol}} moved {{percent_change}}%</h1>
+<p style="margin:0 0 24px;font-size:15px;color:#6B7280;">{{company_name}} · Your threshold: {{threshold_percent}}% in {{time_window}}</p>
+<!-- Stats row -->
+<table role="presentation" width="100%" style="background:#FAFAF9;border:1px solid #E8EAED;border-radius:12px;margin-bottom:24px;">
+  <tr>
+    <td style="padding:20px;"><p style="margin:0;font-size:12px;color:#6B7280;">Previous close</p><p style="margin:4px 0 0;font-size:22px;font-weight:700;color:#141A24;">{{previous_price}}</p></td>
+    <td style="padding:20px;border-left:1px solid #E8EAED;"><p style="margin:0;font-size:12px;color:#6B7280;">Current</p><p style="margin:4px 0 0;font-size:22px;font-weight:700;color:{{change_color}};">{{current_price}}</p></td>
+  </tr>
+</table>

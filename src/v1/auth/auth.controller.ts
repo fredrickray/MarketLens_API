@@ -33,7 +33,7 @@ export class AuthController {
     private readonly oauthExchange: OAuthExchangeService,
   ) {}
 
-  @Post('register')
+  @Post('signup')
   @HttpCode(HttpStatus.CREATED)
   register(@Body() dto: RegisterDto) {
     return this.auth.register(dto);
@@ -41,7 +41,7 @@ export class AuthController {
 
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
-  verifyEmail(
+   async verifyEmail(
     @Body() dto: VerifyEmailDto,
     @Res({ passthrough: true }) res: Response,
   ) {
@@ -58,9 +58,9 @@ export class AuthController {
     return this.auth.resendOtp(dto);
   }
 
-  @Post('login')
+  @Post('signin')
   @HttpCode(HttpStatus.OK)
-  login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     return this.auth.login(dto).then((auth) => {
       this.setAccessTokenCookie(res, auth.accessToken);
       return auth;
@@ -69,7 +69,7 @@ export class AuthController {
 
   @Post('oauth/exchange')
   @HttpCode(HttpStatus.OK)
-  exchangeOAuthCode(
+  async exchangeOAuthCode(
     @Body() dto: ExchangeOAuthCodeDto,
     @Res({ passthrough: true }) res: Response,
   ) {
