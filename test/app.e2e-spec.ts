@@ -144,7 +144,7 @@ describe('App (e2e)', () => {
     const password = 'password123';
 
     const reg = await request(app!.getHttpServer() as Server)
-      .post('/api/v1/auth/register')
+      .post('/api/v1/auth/signup')
       .send({
         firstName: 'E2E',
         lastName: 'User',
@@ -167,7 +167,7 @@ describe('App (e2e)', () => {
     expect(verifyBody.user.isVerified).toBe(true);
 
     const login = await request(app!.getHttpServer() as Server)
-      .post('/api/v1/auth/login')
+      .post('/api/v1/auth/signin')
       .send({ email, password })
       .expect(200);
 
@@ -185,7 +185,7 @@ describe('App (e2e)', () => {
       });
 
     await request(app!.getHttpServer() as Server)
-      .post('/api/v1/auth/register')
+      .post('/api/v1/auth/signup')
       .send({
         firstName: 'E2E',
         lastName: 'User',
@@ -201,7 +201,7 @@ describe('App (e2e)', () => {
     const password = 'password123';
 
     await agent
-      .post('/api/v1/auth/register')
+      .post('/api/v1/auth/signup')
       .send({
         firstName: 'Cookie',
         lastName: 'User',
@@ -229,7 +229,7 @@ describe('App (e2e)', () => {
     const password = 'password123';
 
     await request(app!.getHttpServer() as Server)
-      .post('/api/v1/auth/register')
+      .post('/api/v1/auth/signup')
       .send({
         firstName: 'Ox',
         lastName: 'User',
