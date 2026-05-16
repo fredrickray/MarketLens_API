@@ -178,7 +178,7 @@ export class MarketDataService {
       const extras = await finnhub.getProfileEnrichment(symbol);
       return Object.fromEntries(
         Object.entries(extras).filter(([, value]) => value !== undefined),
-      ) as Partial<StockOverview>;
+      );
     } catch (error) {
       this.logger.warn(
         `Profile enrichment failed for ${symbol}: ${error instanceof Error ? error.message : 'unknown'}`,
