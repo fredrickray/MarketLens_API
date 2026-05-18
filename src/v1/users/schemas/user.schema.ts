@@ -1,6 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { UserRole } from '../../../core/enum';
+import {
+  UserPreferences,
+  UserPreferencesSchema,
+} from './user-preferences.schema';
 
 export type UserDocument = HydratedDocument<User>;
 
@@ -41,6 +45,9 @@ export class User {
 
   @Prop({ default: 0 })
   loginAttempts!: number;
+
+  @Prop({ type: UserPreferencesSchema, default: () => ({}) })
+  preferences!: UserPreferences;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

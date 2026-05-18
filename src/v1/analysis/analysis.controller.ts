@@ -1,4 +1,8 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { AuthActorParam } from '../../core/decorators/auth-actor.decorator';
+import { OptionalAuthGuard } from '../../core/guards/optional-auth.guard';
+import type { AuthActor } from '../../core/types/auth-context.types';
+import { resolvePreferences } from '../../core/utils/preferences.util';
 import { StockSymbolParamDto } from '../stocks/dto/stock-symbol-param.dto';
 import { AnalysisService } from './analysis.service';
 import { AnalysisQueryDto } from './dto/analysis-query.dto';
@@ -8,13 +12,24 @@ export class AnalysisController {
   constructor(private readonly analysis: AnalysisService) {}
 
   @Get(':symbol/analysis')
+  @UseGuards(OptionalAuthGuard)
   getAnalysis(
     @Param() params: StockSymbolParamDto,
     @Query() query: AnalysisQueryDto,
+    @AuthActorParam() actor: AuthActor,
   ) {
-    return this.analysis.analyze(params.symbol, {
+    const context = resolvePreferences(actor, {
       time_horizon: query.time_horizon,
       risk_tolerance: query.risk_tolerance,
     });
+
+    return this.analysis.analyze(
+      params.symbol,
+      {
+        time_horizon: context.time_horizon,
+        risk_tolerance: context.risk_tolerance,
+      },
+      { userId: actor.user ? String(actor.user._id) : null },
+    );
   }
 }

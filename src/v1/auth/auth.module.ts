@@ -5,6 +5,7 @@ import { PassportModule } from '@nestjs/passport';
 import type { StringValue } from 'ms';
 import { MongooseModule } from '@nestjs/mongoose';
 import { MailModule } from '../mail/mail.module';
+import { GuestModule } from '../guest/guest.module';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -22,6 +23,7 @@ import {
   imports: [
     UsersModule,
     MailModule,
+    GuestModule,
     MongooseModule.forFeature([
       { name: OauthExchangeCode.name, schema: OauthExchangeCodeSchema },
     ]),

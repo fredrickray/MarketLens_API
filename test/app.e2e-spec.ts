@@ -446,6 +446,20 @@ describe('App (e2e)', () => {
       });
   });
 
+  it('POST /api/v1/guest/session creates guest session', async () => {
+    const agent = request.agent(app!.getHttpServer() as Server);
+    await agent
+      .post('/api/v1/guest/session')
+      .expect(201)
+      .expect((res) => {
+        const body = res.body as {
+          data: { guestId: string; preferences: { time_horizon: string } };
+        };
+        expect(body.data.guestId).toBeDefined();
+        expect(body.data.preferences.time_horizon).toBeDefined();
+      });
+  });
+
   it('POST /api/v1/alerts requires authentication', async () => {
     await request(app!.getHttpServer() as Server)
       .post('/api/v1/alerts')
