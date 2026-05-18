@@ -82,4 +82,19 @@ export const envValidationSchema = Joi.object({
     .default(300),
   ML_MIN_BUY_CONFIDENCE: Joi.number().min(0).max(1).default(0.6),
   ML_MIN_AVOID_CONFIDENCE: Joi.number().min(0).max(1).default(0.55),
+  COMPLIANCE_VOLATILITY_WARNING_PCT: Joi.number().min(0).max(100).default(5),
+  COMPLIANCE_INFORMATIONAL_CONFIDENCE_MAX: Joi.number()
+    .min(0)
+    .max(1)
+    .default(0.5),
+  COMPLIANCE_AUDIT_RETENTION_DAYS: Joi.number()
+    .integer()
+    .min(30)
+    .max(3650)
+    .default(365),
+  COMPLIANCE_AUDIT_HISTORY_LIMIT: Joi.number()
+    .integer()
+    .min(1)
+    .max(100)
+    .default(20),
 });

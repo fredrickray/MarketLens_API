@@ -13,6 +13,9 @@ export interface ProductRecommendation {
   confidence: number;
   explanation: string;
   warnings: string[];
+  rulesApplied: string[];
+  isInformationalOnly: boolean;
+  wasAdjusted: boolean;
 }
 
 export interface StockAnalysisResult {
