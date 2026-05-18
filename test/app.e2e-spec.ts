@@ -70,6 +70,9 @@ describe('App (e2e)', () => {
               confidence: 0.72,
               explanation: 'E2E mock analysis',
               warnings: [],
+              rulesApplied: [],
+              isInformationalOnly: false,
+              wasAdjusted: false,
             },
             overview: {
               symbol: 'AAPL',
@@ -89,6 +92,12 @@ describe('App (e2e)', () => {
               raw_confidence: 0.72,
             },
             series: { dataPoints: 60 },
+          },
+          compliance: {
+            disclaimer: 'Not financial advice.',
+            shortDisclaimer: 'Not financial advice.',
+            isInformationalOnly: false,
+            rulesApplied: [],
           },
           meta: { cached: false, mlMode: 'mock' },
           disclaimer: 'Not financial advice.',
@@ -387,6 +396,27 @@ describe('App (e2e)', () => {
         };
         expect(body.data.symbol).toBe('AAPL');
         expect(body.data.recommendation.action).toBe('hold');
+        expect(body.disclaimer).toBeDefined();
+        const withCompliance = body as typeof body & {
+          compliance?: { isInformationalOnly: boolean };
+        };
+        expect(withCompliance.compliance?.isInformationalOnly).toBe(false);
+      });
+  });
+
+  it('GET /api/v1/recommendations/:symbol/history returns audit list', async () => {
+    await request(app!.getHttpServer() as Server)
+      .get('/api/v1/recommendations/AAPL/history')
+      .query({ limit: 5 })
+      .expect(200)
+      .expect((res) => {
+        const body = res.body as {
+          data: unknown[];
+          meta: { symbol: string; count: number };
+          disclaimer: string;
+        };
+        expect(body.meta.symbol).toBe('AAPL');
+        expect(Array.isArray(body.data)).toBe(true);
         expect(body.disclaimer).toBeDefined();
       });
   });

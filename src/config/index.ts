@@ -1,4 +1,5 @@
 import appConfig from './app.config';
+import complianceConfig from './compliance.config';
 import databaseConfig from './database.config';
 import marketConfig from './market.config';
 import mlConfig from './ml.config';
@@ -10,6 +11,14 @@ export const configLoaders = [
   redisConfig,
   marketConfig,
   mlConfig,
+  complianceConfig,
 ];
 
-export { appConfig, databaseConfig, redisConfig, marketConfig, mlConfig };
+export {
+  appConfig,
+  databaseConfig,
+  redisConfig,
+  marketConfig,
+  mlConfig,
+  complianceConfig,
+};

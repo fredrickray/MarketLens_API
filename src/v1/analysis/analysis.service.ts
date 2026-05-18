@@ -7,10 +7,13 @@ import type {
   CachedStockAnalysis,
   StockAnalysisResult,
 } from '../../core/types/analysis.types';
+import type { ComplianceEnvelope } from '../../core/types/compliance.types';
 import type { MlPredictContext } from '../../core/types/ml.types';
 import { RedisService } from '../../cache/redis.service';
 import { MarketDataService } from '../../integrations/market-data/market-data.service';
 import { MlService } from '../../integrations/ml-service/ml.service';
+import { ComplianceService } from '../recommendations/compliance.service';
+import { RecommendationAuditService } from '../recommendations/recommendation-audit.service';
 import { RecommendationsService } from '../recommendations/recommendations.service';
 
 @Injectable()
@@ -21,19 +24,33 @@ export class AnalysisService {
     private readonly marketData: MarketDataService,
     private readonly ml: MlService,
     private readonly recommendations: RecommendationsService,
+    private readonly compliance: ComplianceService,
+    private readonly audit: RecommendationAuditService,
   ) {}
 
-  async analyze(symbol: string, context: AnalysisContext = {}) {
+  async analyze(
+    symbol: string,
+    context: AnalysisContext = {},
+    options?: { userId?: string | null },
+  ) {
     const contextKey = this.buildContextKey(context);
     const cacheKey = CACHE_KEYS.stockAnalysis(symbol, contextKey);
 
     const cached = await this.redis.getJson<CachedStockAnalysis>(cacheKey);
     if (cached) {
-      return this.wrapResponse(cached, {
+      const response = this.wrapResponse(cached, {
         cached: true,
         marketProvider: cached.overview.provider,
         mlMode: this.ml.getMode(),
       });
+      await this.audit.logRecommendationServed({
+        analysis: cached,
+        context,
+        wasCached: true,
+        marketProvider: cached.overview.provider,
+        userId: options?.userId,
+      });
+      return response;
     }
 
     const [overviewPayload, history] = await Promise.all([
@@ -61,6 +78,7 @@ export class AnalysisService {
     const recommendation = this.recommendations.applyRules(
       mlResponse,
       mlContext,
+      { quote: overview.quote },
     );
 
     const analysis: StockAnalysisResult = {
@@ -88,7 +106,7 @@ export class AnalysisService {
     };
     await this.redis.setJson(cacheKey, cachedPayload, ttl);
 
-    return this.wrapResponse(cachedPayload, {
+    const response = this.wrapResponse(cachedPayload, {
       cached: false,
       marketProvider: overview.provider,
       historyProvider: history.provider,
@@ -96,14 +114,31 @@ export class AnalysisService {
       historyCached: history.cached,
       mlMode: this.ml.getMode(),
     });
+
+    await this.audit.logRecommendationServed({
+      analysis,
+      context,
+      wasCached: false,
+      marketProvider: overview.provider,
+      userId: options?.userId,
+    });
+
+    return response;
   }
 
   private wrapResponse(
     analysis: StockAnalysisResult | CachedStockAnalysis,
     meta: Record<string, unknown>,
-  ) {
+  ): {
+    data: StockAnalysisResult | CachedStockAnalysis;
+    compliance: ComplianceEnvelope;
+    meta: Record<string, unknown>;
+    disclaimer: string;
+  } {
+    const compliance = this.compliance.buildEnvelope(analysis.recommendation);
     return {
       data: analysis,
+      compliance,
       meta,
       disclaimer: FINANCIAL_DISCLAIMER,
     };

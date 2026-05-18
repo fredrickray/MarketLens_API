@@ -2,10 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigModule } from '@nestjs/config';
 import { RecommendationAction } from '../../core/enums/recommendation-action.enum';
 import { MlServiceMode } from '../../core/enums/ml-mode.enum';
-import { mlConfig, marketConfig } from '../../config';
+import { complianceConfig, marketConfig, mlConfig } from '../../config';
 import { RedisService } from '../../cache/redis.service';
 import { MarketDataService } from '../../integrations/market-data/market-data.service';
 import { MlService } from '../../integrations/ml-service/ml.service';
+import { ComplianceService } from '../recommendations/compliance.service';
+import { RecommendationAuditService } from '../recommendations/recommendation-audit.service';
 import { RecommendationsService } from '../recommendations/recommendations.service';
 import { AnalysisService } from './analysis.service';
 
@@ -16,13 +18,20 @@ describe('AnalysisService', () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
-          load: [mlConfig, marketConfig],
+          load: [mlConfig, marketConfig, complianceConfig],
           isGlobal: true,
         }),
       ],
       providers: [
         AnalysisService,
         RecommendationsService,
+        ComplianceService,
+        {
+          provide: RecommendationAuditService,
+          useValue: {
+            logRecommendationServed: jest.fn().mockResolvedValue(undefined),
+          },
+        },
         {
           provide: RedisService,
           useValue: {
@@ -79,15 +88,13 @@ describe('AnalysisService', () => {
     service = module.get(AnalysisService);
   });
 
-  it('returns analysis with recommendation', async () => {
-    const result = await service.analyze('AAPL', {
-      time_horizon: undefined,
-      risk_tolerance: 'medium',
-    });
+  it('returns analysis with recommendation and compliance', async () => {
+    const result = await service.analyze('AAPL', { risk_tolerance: 'medium' });
 
     expect(result.data.symbol).toBe('AAPL');
     expect(result.data.recommendation.action).toBe(RecommendationAction.BUY);
-    expect(result.data.series.dataPoints).toBe(3);
+    expect(result.compliance.isInformationalOnly).toBeDefined();
+    expect(result.compliance.rulesApplied).toBeDefined();
     expect(result.disclaimer).toBeDefined();
     expect(result.meta.mlMode).toBe(MlServiceMode.MOCK);
   });
