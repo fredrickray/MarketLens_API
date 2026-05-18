@@ -47,5 +47,6 @@ import {
     OtpService,
     OAuthExchangeService,
   ],
+  exports: [PassportModule, JwtModule],
 })
 export class AuthModule {}

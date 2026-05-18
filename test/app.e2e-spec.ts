@@ -446,6 +446,17 @@ describe('App (e2e)', () => {
       });
   });
 
+  it('POST /api/v1/alerts requires authentication', async () => {
+    await request(app!.getHttpServer() as Server)
+      .post('/api/v1/alerts')
+      .send({
+        symbol: 'AAPL',
+        type: 'price_above',
+        targetPrice: 200,
+      })
+      .expect(401);
+  });
+
   it('GET /api/v1/recommendations/:symbol/history returns audit list', async () => {
     await request(app!.getHttpServer() as Server)
       .get('/api/v1/recommendations/AAPL/history')

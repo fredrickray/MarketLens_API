@@ -108,4 +108,9 @@ export const envValidationSchema = Joi.object({
   NEWS_DEFAULT_LIMIT: Joi.number().integer().min(1).max(50).default(20),
   NEWS_MAX_LIMIT: Joi.number().integer().min(1).max(100).default(50),
   NEWS_SYNC_CRON: Joi.string().optional().allow(''),
+
+  APP_PUBLIC_URL: Joi.string().uri().optional().allow(''),
+  ALERTS_EVAL_CRON: Joi.string().optional().allow(''),
+  ALERTS_COOLDOWN_MINUTES: Joi.number().integer().min(5).max(1440).default(60),
+  ALERTS_MAX_PER_USER: Joi.number().integer().min(1).max(100).default(25),
 });

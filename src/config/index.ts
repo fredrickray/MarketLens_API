@@ -1,4 +1,5 @@
 import appConfig from './app.config';
+import alertsConfig from './alerts.config';
 import complianceConfig from './compliance.config';
 import databaseConfig from './database.config';
 import marketConfig from './market.config';
@@ -14,6 +15,7 @@ export const configLoaders = [
   mlConfig,
   complianceConfig,
   newsConfig,
+  alertsConfig,
 ];
 
 export {
@@ -24,4 +26,5 @@ export {
   mlConfig,
   complianceConfig,
   newsConfig,
+  alertsConfig,
 };
