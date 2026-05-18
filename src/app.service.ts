@@ -1,15 +1,14 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AppService {
-  getHello(): { message: string } {
-    return { message: 'MarketLens API' };
-  }
+  constructor(private readonly config: ConfigService) {}
 
-  getHealth(): { status: string; timestamp: string } {
+  getHello(): { message: string; version: string } {
     return {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
+      message: 'MarketLens API',
+      version: this.config.get<string>('app.version') ?? '0.0.1',
     };
   }
 }
