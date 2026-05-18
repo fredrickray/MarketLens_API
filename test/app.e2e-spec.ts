@@ -10,6 +10,9 @@ import type { Server } from 'http';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import request from 'supertest';
 import session from 'express-session';
+import { RecommendationAction } from '../src/core/enums/recommendation-action.enum';
+import { AnalysisService } from '../src/v1/analysis/analysis.service';
+import { MarketDataService } from '../src/integrations/market-data/market-data.service';
 import { OtpService } from '../src/v1/auth/otp.service';
 import { OAuthExchangeService } from '../src/v1/auth/oauth-exchange.service';
 
@@ -57,6 +60,72 @@ describe('App (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
+      .overrideProvider(AnalysisService)
+      .useValue({
+        analyze: jest.fn().mockResolvedValue({
+          data: {
+            symbol: 'AAPL',
+            recommendation: {
+              action: RecommendationAction.HOLD,
+              confidence: 0.72,
+              explanation: 'E2E mock analysis',
+              warnings: [],
+            },
+            overview: {
+              symbol: 'AAPL',
+              name: 'Apple Inc.',
+              provider: 'mock',
+              quote: {
+                symbol: 'AAPL',
+                price: 198.5,
+                change: 1.2,
+                changePercent: 0.6,
+                timestamp: new Date().toISOString(),
+              },
+            },
+            model: {
+              mode: 'mock',
+              raw_action: RecommendationAction.HOLD,
+              raw_confidence: 0.72,
+            },
+            series: { dataPoints: 60 },
+          },
+          meta: { cached: false, mlMode: 'mock' },
+          disclaimer: 'Not financial advice.',
+        }),
+      })
+      .overrideProvider(MarketDataService)
+      .useValue({
+        searchSymbols: jest.fn().mockResolvedValue({
+          results: [{ symbol: 'AAPL', name: 'Apple Inc.', exchange: 'NASDAQ' }],
+          cached: false,
+          provider: 'mock',
+        }),
+        getOverview: jest.fn().mockResolvedValue({
+          symbol: 'AAPL',
+          name: 'Apple Inc.',
+          exchange: 'NASDAQ',
+          provider: 'mock',
+          quote: {
+            symbol: 'AAPL',
+            price: 198.5,
+            change: 1.2,
+            changePercent: 0.6,
+            timestamp: new Date().toISOString(),
+          },
+          cached: false,
+        }),
+        warmSymbol: jest.fn().mockResolvedValue(undefined),
+        getActiveProviderNames: jest.fn().mockReturnValue(['mock']),
+        getHistoricalSeries: jest.fn().mockResolvedValue({
+          symbol: 'AAPL',
+          prices: [190, 195, 198.5],
+          volume: [1e6, 1.1e6, 1.2e6],
+          timestamps: ['2026-01-01', '2026-01-02', '2026-01-03'],
+          provider: 'mock',
+          cached: false,
+        }),
+      })
       .overrideProvider(OtpService)
       .useValue({
         issueEmailVerificationOtp: jest.fn().mockResolvedValue('123456'),
@@ -121,8 +190,15 @@ describe('App (e2e)', () => {
       .get('/health')
       .expect(200)
       .expect((res) => {
-        expect(res.body).toHaveProperty('status', 'ok');
-        expect(res.body).toHaveProperty('timestamp');
+        const body = res.body as {
+          status: string;
+          timestamp: string;
+          checks: { database: unknown; ml: unknown };
+        };
+        expect(body.status).toBe('ok');
+        expect(body.timestamp).toBeDefined();
+        expect(body.checks).toHaveProperty('database');
+        expect(body.checks).toHaveProperty('ml');
       });
   });
 
@@ -255,6 +331,63 @@ describe('App (e2e)', () => {
       .expect(200)
       .expect((res) => {
         expect((res.body as MeBody).email).toBe(email.toLowerCase());
+      });
+  });
+
+  it('GET /api/v1/stocks/search returns results', async () => {
+    await request(app!.getHttpServer() as Server)
+      .get('/api/v1/stocks/search')
+      .query({ q: 'AAPL' })
+      .expect(200)
+      .expect((res) => {
+        const body = res.body as {
+          data: Array<{ symbol: string }>;
+          meta: { query: string; provider: string };
+          disclaimer: string;
+        };
+        expect(body.data[0]?.symbol).toBe('AAPL');
+        expect(body.meta.query).toBe('AAPL');
+        expect(body.disclaimer).toBeDefined();
+      });
+  });
+
+  it('GET /api/v1/stocks/:symbol/overview returns overview', async () => {
+    await request(app!.getHttpServer() as Server)
+      .get('/api/v1/stocks/AAPL/overview')
+      .expect(200)
+      .expect((res) => {
+        const body = res.body as {
+          data: { symbol: string; quote: { price: number } };
+          meta: { provider: string };
+        };
+        expect(body.data.symbol).toBe('AAPL');
+        expect(body.data.quote.price).toBe(198.5);
+        expect(body.meta.provider).toBe('mock');
+      });
+  });
+
+  it('GET /api/v1/stocks/search rejects empty query', async () => {
+    await request(app!.getHttpServer() as Server)
+      .get('/api/v1/stocks/search')
+      .expect(400);
+  });
+
+  it('GET /api/v1/stocks/:symbol/analysis returns recommendation', async () => {
+    await request(app!.getHttpServer() as Server)
+      .get('/api/v1/stocks/AAPL/analysis')
+      .query({ time_horizon: 'medium', risk_tolerance: 'medium' })
+      .expect(200)
+      .expect((res) => {
+        const body = res.body as {
+          data: {
+            symbol: string;
+            recommendation: { action: string; confidence: number };
+          };
+          disclaimer: string;
+        };
+        expect(body.data.symbol).toBe('AAPL');
+        expect(body.data.recommendation.action).toBe('hold');
+        expect(body.disclaimer).toBeDefined();
       });
   });
 });

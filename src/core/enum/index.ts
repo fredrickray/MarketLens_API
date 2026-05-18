@@ -1,4 +1,6 @@
-export enum UserRole {
-  USER = 'user',
-  ADMIN = 'admin',
-}
+export {
+  UserRole,
+  RecommendationAction,
+  TimeHorizon,
+  MlServiceMode,
+} from '../enums';
