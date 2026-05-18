@@ -23,6 +23,7 @@ import { RegisterDto } from './dto/register.dto';
 import { ResendOtpDto } from './dto/resend-otp.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { OAuthExchangeService } from './oauth-exchange.service';
+import { GuestMergeService } from '../guest/guest-merge.service';
 import type { UserDocument } from '../users/schemas/user.schema';
 
 @Controller('auth')
@@ -31,6 +32,7 @@ export class AuthController {
     private readonly auth: AuthService,
     private readonly config: ConfigService,
     private readonly oauthExchange: OAuthExchangeService,
+    private readonly guestMerge: GuestMergeService,
   ) {}
 
   @Post('signup')
@@ -117,6 +119,20 @@ export class AuthController {
       }
     }
     res.status(HttpStatus.OK).json({ code, expiresInSeconds });
+  }
+
+  @Post('merge-guest')
+  @UseGuards(AuthGuard('jwt'))
+  @HttpCode(HttpStatus.OK)
+  async mergeGuest(@CurrentUser() user: UserDocument, @Req() req: Request) {
+    const result = await this.guestMerge.mergeGuestSessionIntoUser(
+      user,
+      req.session?.guestId,
+    );
+    if (result.merged && req.session) {
+      delete req.session.guestId;
+    }
+    return result;
   }
 
   @Get('me')

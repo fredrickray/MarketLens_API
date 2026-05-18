@@ -113,4 +113,16 @@ export const envValidationSchema = Joi.object({
   ALERTS_EVAL_CRON: Joi.string().optional().allow(''),
   ALERTS_COOLDOWN_MINUTES: Joi.number().integer().min(5).max(1440).default(60),
   ALERTS_MAX_PER_USER: Joi.number().integer().min(1).max(100).default(25),
+
+  GUEST_SESSION_TTL_DAYS: Joi.number().integer().min(1).max(30).default(7),
+  GUEST_RATE_LIMIT_PER_MINUTE: Joi.number()
+    .integer()
+    .min(5)
+    .max(500)
+    .default(40),
+  AUTH_RATE_LIMIT_PER_MINUTE: Joi.number()
+    .integer()
+    .min(10)
+    .max(1000)
+    .default(120),
 });
