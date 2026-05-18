@@ -12,6 +12,7 @@ import request from 'supertest';
 import session from 'express-session';
 import { RecommendationAction } from '../src/core/enums/recommendation-action.enum';
 import { AnalysisService } from '../src/v1/analysis/analysis.service';
+import { NewsIntegrationService } from '../src/integrations/news/news.service';
 import { MarketDataService } from '../src/integrations/market-data/market-data.service';
 import { OtpService } from '../src/v1/auth/otp.service';
 import { OAuthExchangeService } from '../src/v1/auth/oauth-exchange.service';
@@ -102,6 +103,26 @@ describe('App (e2e)', () => {
           meta: { cached: false, mlMode: 'mock' },
           disclaimer: 'Not financial advice.',
         }),
+      })
+      .overrideProvider(NewsIntegrationService)
+      .useValue({
+        getCompanyNews: jest.fn().mockResolvedValue({
+          symbol: 'AAPL',
+          articles: [
+            {
+              id: 'e2e-1',
+              headline: 'E2E news headline',
+              summary: 'E2E summary',
+              source: 'Mock',
+              url: 'https://example.com/news',
+              publishedAt: new Date().toISOString(),
+            },
+          ],
+          provider: 'mock',
+          fetchedAt: new Date().toISOString(),
+          cached: false,
+        }),
+        warmSymbol: jest.fn().mockResolvedValue(undefined),
       })
       .overrideProvider(MarketDataService)
       .useValue({
@@ -402,6 +423,38 @@ describe('App (e2e)', () => {
         };
         expect(withCompliance.compliance?.isInformationalOnly).toBe(false);
       });
+  });
+
+  it('GET /api/v1/stocks/:symbol/news returns articles', async () => {
+    await request(app!.getHttpServer() as Server)
+      .get('/api/v1/stocks/AAPL/news')
+      .query({ days: 7, limit: 10 })
+      .expect(200)
+      .expect((res) => {
+        const body = res.body as {
+          data: {
+            symbol: string;
+            articles: Array<{ headline: string }>;
+          };
+          meta: { provider: string; count: number };
+          disclaimer: string;
+        };
+        expect(body.data.symbol).toBe('AAPL');
+        expect(body.data.articles[0]?.headline).toBe('E2E news headline');
+        expect(body.meta.provider).toBe('mock');
+        expect(body.disclaimer).toBeDefined();
+      });
+  });
+
+  it('POST /api/v1/alerts requires authentication', async () => {
+    await request(app!.getHttpServer() as Server)
+      .post('/api/v1/alerts')
+      .send({
+        symbol: 'AAPL',
+        type: 'price_above',
+        targetPrice: 200,
+      })
+      .expect(401);
   });
 
   it('GET /api/v1/recommendations/:symbol/history returns audit list', async () => {

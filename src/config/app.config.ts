@@ -6,4 +6,5 @@ export default registerAs('app', () => ({
   corsOrigins: process.env.CORS_ORIGINS ?? '',
   name: 'MarketLens API',
   version: process.env.npm_package_version ?? '0.0.1',
+  publicUrl: process.env.APP_PUBLIC_URL?.trim() || 'http://localhost:3000',
 }));

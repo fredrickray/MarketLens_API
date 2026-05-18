@@ -97,4 +97,20 @@ export const envValidationSchema = Joi.object({
     .min(1)
     .max(100)
     .default(20),
+
+  NEWS_PROVIDER: Joi.string().valid('finnhub', 'mock').default('finnhub'),
+  NEWS_CACHE_TTL_SECONDS: Joi.number()
+    .integer()
+    .min(60)
+    .max(86400)
+    .default(600),
+  NEWS_DEFAULT_DAYS: Joi.number().integer().min(1).max(30).default(7),
+  NEWS_DEFAULT_LIMIT: Joi.number().integer().min(1).max(50).default(20),
+  NEWS_MAX_LIMIT: Joi.number().integer().min(1).max(100).default(50),
+  NEWS_SYNC_CRON: Joi.string().optional().allow(''),
+
+  APP_PUBLIC_URL: Joi.string().uri().optional().allow(''),
+  ALERTS_EVAL_CRON: Joi.string().optional().allow(''),
+  ALERTS_COOLDOWN_MINUTES: Joi.number().integer().min(5).max(1440).default(60),
+  ALERTS_MAX_PER_USER: Joi.number().integer().min(1).max(100).default(25),
 });

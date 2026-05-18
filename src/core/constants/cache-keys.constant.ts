@@ -5,4 +5,6 @@ export const CACHE_KEYS = {
     `market:history:${symbol.toUpperCase()}:${days}`,
   stockAnalysis: (symbol: string, contextKey: string) =>
     `market:analysis:${symbol.toUpperCase()}:${contextKey}`,
+  stockNews: (symbol: string, days: number) =>
+    `news:feed:${symbol.toUpperCase()}:${days}`,
 } as const;

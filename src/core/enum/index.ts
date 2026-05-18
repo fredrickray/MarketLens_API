@@ -3,4 +3,5 @@ export {
   RecommendationAction,
   TimeHorizon,
   MlServiceMode,
+  AlertType,
 } from '../enums';
