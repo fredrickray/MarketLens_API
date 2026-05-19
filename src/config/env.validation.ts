@@ -125,4 +125,31 @@ export const envValidationSchema = Joi.object({
     .min(10)
     .max(1000)
     .default(120),
+
+  SECURITY_DEFAULT_RATE_LIMIT_PER_MINUTE: Joi.number()
+    .integer()
+    .min(10)
+    .max(1000)
+    .optional(),
+  SECURITY_AUTH_RATE_LIMIT_PER_MINUTE: Joi.number()
+    .integer()
+    .min(5)
+    .max(500)
+    .default(30),
+  SECURITY_ANALYSIS_RATE_LIMIT_PER_MINUTE: Joi.number()
+    .integer()
+    .min(5)
+    .max(500)
+    .default(30),
+  SECURITY_AUDIT_RETENTION_DAYS: Joi.number()
+    .integer()
+    .min(7)
+    .max(3650)
+    .default(90),
+  SECURITY_AUDIT_DEFAULT_LIMIT: Joi.number()
+    .integer()
+    .min(1)
+    .max(200)
+    .default(50),
+  TRUST_PROXY: Joi.string().valid('true', 'false').optional().allow(''),
 });

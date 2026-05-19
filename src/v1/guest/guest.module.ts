@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { OptionalAuthGuard } from '../../core/guards/optional-auth.guard';
+import { AuditModule } from '../audit/audit.module';
 import { UsersModule } from '../users/users.module';
 import { WatchlistModule } from '../watchlist/watchlist.module';
 import { GuestController } from './guest.controller';
@@ -17,6 +18,7 @@ import {
       { name: GuestSession.name, schema: GuestSessionSchema },
     ]),
     UsersModule,
+    AuditModule,
     forwardRef(() => WatchlistModule),
   ],
   controllers: [GuestController],

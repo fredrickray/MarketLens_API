@@ -62,3 +62,8 @@ export const RecommendationAuditSchema =
 
 RecommendationAuditSchema.index({ symbol: 1, createdAt: -1 });
 RecommendationAuditSchema.index({ userId: 1, createdAt: -1 });
+/** Default 365d retention; align with COMPLIANCE_AUDIT_RETENTION_DAYS if you change TTL. */
+RecommendationAuditSchema.index(
+  { createdAt: 1 },
+  { expireAfterSeconds: 365 * 24 * 60 * 60 },
+);

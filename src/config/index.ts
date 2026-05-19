@@ -1,6 +1,7 @@
 import appConfig from './app.config';
 import alertsConfig from './alerts.config';
 import guestConfig from './guest.config';
+import securityConfig from './security.config';
 import complianceConfig from './compliance.config';
 import databaseConfig from './database.config';
 import marketConfig from './market.config';
@@ -18,6 +19,7 @@ export const configLoaders = [
   newsConfig,
   alertsConfig,
   guestConfig,
+  securityConfig,
 ];
 
 export {
@@ -30,4 +32,5 @@ export {
   newsConfig,
   alertsConfig,
   guestConfig,
+  securityConfig,
 };

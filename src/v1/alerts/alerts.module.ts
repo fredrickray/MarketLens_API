@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { MarketDataModule } from '../../integrations/market-data/market-data.module';
+import { AuditModule } from '../audit/audit.module';
 import { AnalysisModule } from '../analysis/analysis.module';
 import { AuthModule } from '../auth/auth.module';
 import { MailModule } from '../mail/mail.module';
@@ -15,6 +16,7 @@ import { Alert, AlertSchema } from './schemas/alert.schema';
 @Module({
   imports: [
     AuthModule,
+    AuditModule,
     UsersModule,
     MailModule,
     MarketDataModule,

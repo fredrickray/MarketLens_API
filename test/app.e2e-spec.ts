@@ -10,7 +10,11 @@ import type { Server } from 'http';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import request from 'supertest';
 import session from 'express-session';
+import { getModelToken } from '@nestjs/mongoose';
+import type { Model } from 'mongoose';
 import { RecommendationAction } from '../src/core/enums/recommendation-action.enum';
+import { UserRole } from '../src/core/enums/user-role.enum';
+import { User, type UserDocument } from '../src/v1/users/schemas/user.schema';
 import { AnalysisService } from '../src/v1/analysis/analysis.service';
 import { NewsIntegrationService } from '../src/integrations/news/news.service';
 import { MarketDataService } from '../src/integrations/market-data/market-data.service';
@@ -229,6 +233,57 @@ describe('App (e2e)', () => {
         expect(body.timestamp).toBeDefined();
         expect(body.checks).toHaveProperty('database');
         expect(body.checks).toHaveProperty('ml');
+        expect(res.headers['x-request-id']).toBeDefined();
+      });
+  });
+
+  it('GET /api/v1/admin/security-audit enforces admin role', async () => {
+    const email = `admin-${Date.now()}@example.com`;
+    const password = 'password123';
+
+    await request(app!.getHttpServer() as Server)
+      .post('/api/v1/auth/signup')
+      .send({
+        firstName: 'Admin',
+        lastName: 'Test',
+        email,
+        password,
+      })
+      .expect(201);
+
+    await request(app!.getHttpServer() as Server)
+      .post('/api/v1/auth/verify-email')
+      .send({ email, otp: '123456' })
+      .expect(200);
+
+    const login = await request(app!.getHttpServer() as Server)
+      .post('/api/v1/auth/signin')
+      .send({ email, password })
+      .expect(200);
+
+    const token = (login.body as AuthSuccessBody).accessToken;
+
+    await request(app!.getHttpServer() as Server)
+      .get('/api/v1/admin/security-audit')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(403);
+
+    const userModel = moduleRef!.get<Model<UserDocument>>(
+      getModelToken(User.name),
+    );
+    await userModel.updateOne(
+      { email: email.toLowerCase() },
+      { $set: { role: UserRole.ADMIN } },
+    );
+
+    await request(app!.getHttpServer() as Server)
+      .get('/api/v1/admin/security-audit')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect((res) => {
+        const body = res.body as { data: unknown[]; meta: { count: number } };
+        expect(Array.isArray(body.data)).toBe(true);
+        expect(body.meta.count).toBeGreaterThanOrEqual(0);
       });
   });
 

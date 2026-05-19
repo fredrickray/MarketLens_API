@@ -11,9 +11,16 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import type { StringValue } from 'ms';
 import ms from 'ms';
+import { SecurityAuditEvent } from '../../core/enums/security-audit-event.enum';
+import {
+  TooManyRequests,
+  Unauthorized,
+} from '../../core/exceptions/http.errors';
+import { SecurityAuditService } from '../audit/security-audit.service';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { ExchangeOAuthCodeDto } from './dto/exchange-oauth-code.dto';
@@ -27,31 +34,44 @@ import { GuestMergeService } from '../guest/guest-merge.service';
 import type { UserDocument } from '../users/schemas/user.schema';
 
 @Controller('auth')
+@Throttle({ auth: { ttl: 60_000, limit: 30 } })
 export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly config: ConfigService,
     private readonly oauthExchange: OAuthExchangeService,
     private readonly guestMerge: GuestMergeService,
+    private readonly securityAudit: SecurityAuditService,
   ) {}
 
   @Post('signup')
   @HttpCode(HttpStatus.CREATED)
-  register(@Body() dto: RegisterDto) {
-    return this.auth.register(dto);
+  async register(@Body() dto: RegisterDto, @Req() req: Request) {
+    const result = await this.auth.register(dto);
+    await this.securityAudit.log({
+      event: SecurityAuditEvent.REGISTER,
+      email: dto.email,
+      req,
+    });
+    return result;
   }
 
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
   async verifyEmail(
     @Body() dto: VerifyEmailDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const payload = this.auth.verifyEmail(dto);
-    return payload.then((auth) => {
-      this.setAccessTokenCookie(res, auth.accessToken);
-      return auth;
+    const auth = await this.auth.verifyEmail(dto);
+    await this.securityAudit.log({
+      event: SecurityAuditEvent.VERIFY_EMAIL,
+      userId: auth.user.id,
+      email: auth.user.email,
+      req,
     });
+    this.setAccessTokenCookie(res, auth.accessToken);
+    return auth;
   }
 
   @Post('resend-otp')
@@ -64,24 +84,41 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async login(
     @Body() dto: LoginDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    return this.auth.login(dto).then((auth) => {
+    try {
+      const auth = await this.auth.login(dto);
+      await this.securityAudit.log({
+        event: SecurityAuditEvent.LOGIN_SUCCESS,
+        userId: auth.user.id,
+        email: auth.user.email,
+        req,
+      });
       this.setAccessTokenCookie(res, auth.accessToken);
       return auth;
-    });
+    } catch (error) {
+      await this.logLoginFailure(dto.email, req, error);
+      throw error;
+    }
   }
 
   @Post('oauth/exchange')
   @HttpCode(HttpStatus.OK)
   async exchangeOAuthCode(
     @Body() dto: ExchangeOAuthCodeDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    return this.auth.exchangeOAuthCode(dto.code).then((auth) => {
-      this.setAccessTokenCookie(res, auth.accessToken);
-      return auth;
+    const auth = await this.auth.exchangeOAuthCode(dto.code);
+    await this.securityAudit.log({
+      event: SecurityAuditEvent.OAUTH_EXCHANGE,
+      userId: auth.user.id,
+      email: auth.user.email,
+      req,
     });
+    this.setAccessTokenCookie(res, auth.accessToken);
+    return auth;
   }
 
   @Post('logout')
@@ -131,6 +168,12 @@ export class AuthController {
     );
     if (result.merged && req.session) {
       delete req.session.guestId;
+      await this.securityAudit.log({
+        event: SecurityAuditEvent.GUEST_MERGE,
+        userId: String(user._id),
+        email: user.email,
+        req,
+      });
     }
     return result;
   }
@@ -146,6 +189,29 @@ export class AuthController {
       lastName: user.lastName,
       isVerified: user.isVerified,
     };
+  }
+
+  private async logLoginFailure(
+    email: string,
+    req: Request,
+    error: unknown,
+  ): Promise<void> {
+    if (error instanceof TooManyRequests) {
+      await this.securityAudit.log({
+        event: SecurityAuditEvent.LOGIN_LOCKOUT,
+        email,
+        req,
+      });
+      return;
+    }
+
+    if (error instanceof Unauthorized) {
+      await this.securityAudit.log({
+        event: SecurityAuditEvent.LOGIN_FAILURE,
+        email,
+        req,
+      });
+    }
   }
 
   private setAccessTokenCookie(res: Response, token: string): void {

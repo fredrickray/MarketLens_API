@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { AdminModule } from './admin/admin.module';
 import { AnalysisModule } from './analysis/analysis.module';
+import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { GuestModule } from './guest/guest.module';
@@ -10,6 +12,7 @@ import { StocksModule } from './stocks/stocks.module';
 
 @Module({
   imports: [
+    AuditModule,
     AuthModule,
     StocksModule,
     AnalysisModule,
@@ -18,6 +21,7 @@ import { StocksModule } from './stocks/stocks.module';
     AlertsModule,
     GuestModule,
     WatchlistModule,
+    AdminModule,
   ],
 })
 export class V1Module {}

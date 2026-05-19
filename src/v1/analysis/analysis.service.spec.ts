@@ -7,6 +7,7 @@ import { RedisService } from '../../cache/redis.service';
 import { MarketDataService } from '../../integrations/market-data/market-data.service';
 import { MlService } from '../../integrations/ml-service/ml.service';
 import { ComplianceService } from '../recommendations/compliance.service';
+import { SecurityAuditService } from '../audit/security-audit.service';
 import { RecommendationAuditService } from '../recommendations/recommendation-audit.service';
 import { RecommendationsService } from '../recommendations/recommendations.service';
 import { AnalysisService } from './analysis.service';
@@ -31,6 +32,10 @@ describe('AnalysisService', () => {
           useValue: {
             logRecommendationServed: jest.fn().mockResolvedValue(undefined),
           },
+        },
+        {
+          provide: SecurityAuditService,
+          useValue: { log: jest.fn().mockResolvedValue(undefined) },
         },
         {
           provide: RedisService,
