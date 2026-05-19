@@ -10,6 +10,13 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
 
+  if (config.get<boolean>('security.trustProxy')) {
+    const httpAdapter = app.getHttpAdapter().getInstance() as {
+      set: (setting: string, value: unknown) => void;
+    };
+    httpAdapter.set('trust proxy', 1);
+  }
+
   app.use(cookieParser());
   app.use(
     session({

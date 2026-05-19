@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthActorParam } from '../../core/decorators/auth-actor.decorator';
 import { OptionalAuthGuard } from '../../core/guards/optional-auth.guard';
 import type { AuthActor } from '../../core/types/auth-context.types';
@@ -12,6 +13,7 @@ export class AnalysisController {
   constructor(private readonly analysis: AnalysisService) {}
 
   @Get(':symbol/analysis')
+  @Throttle({ analysis: { ttl: 60_000, limit: 30 } })
   @UseGuards(OptionalAuthGuard)
   getAnalysis(
     @Param() params: StockSymbolParamDto,

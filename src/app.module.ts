@@ -1,7 +1,9 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { RequestContextModule } from './core/context/request-context.module';
+import { RequestIdMiddleware } from './core/middleware/request-id.middleware';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { RedisModule } from './cache/redis.module';
@@ -26,7 +28,30 @@ import { V1Module } from './v1/v1.module';
         abortEarly: true,
       },
     }),
-    ThrottlerModule.forRoot([{ name: 'default', ttl: 60000, limit: 120 }]),
+    RequestContextModule,
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => [
+        {
+          name: 'default',
+          ttl: 60_000,
+          limit:
+            config.get<number>('security.defaultRateLimitPerMinute') ?? 120,
+        },
+        {
+          name: 'auth',
+          ttl: 60_000,
+          limit: config.get<number>('security.authRateLimitPerMinute') ?? 30,
+        },
+        {
+          name: 'analysis',
+          ttl: 60_000,
+          limit:
+            config.get<number>('security.analysisRateLimitPerMinute') ?? 30,
+        },
+      ],
+    }),
     RedisModule,
     MlModule,
     DatabaseModule,
@@ -42,4 +67,8 @@ import { V1Module } from './v1/v1.module';
     { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(RequestIdMiddleware).forRoutes('*');
+  }
+}

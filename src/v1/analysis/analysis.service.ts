@@ -12,6 +12,8 @@ import type { MlPredictContext } from '../../core/types/ml.types';
 import { RedisService } from '../../cache/redis.service';
 import { MarketDataService } from '../../integrations/market-data/market-data.service';
 import { MlService } from '../../integrations/ml-service/ml.service';
+import { SecurityAuditEvent } from '../../core/enums/security-audit-event.enum';
+import { SecurityAuditService } from '../audit/security-audit.service';
 import { ComplianceService } from '../recommendations/compliance.service';
 import { RecommendationAuditService } from '../recommendations/recommendation-audit.service';
 import { RecommendationsService } from '../recommendations/recommendations.service';
@@ -26,6 +28,7 @@ export class AnalysisService {
     private readonly recommendations: RecommendationsService,
     private readonly compliance: ComplianceService,
     private readonly audit: RecommendationAuditService,
+    private readonly securityAudit: SecurityAuditService,
   ) {}
 
   async analyze(
@@ -33,6 +36,17 @@ export class AnalysisService {
     context: AnalysisContext = {},
     options?: { userId?: string | null },
   ) {
+    const normalized = symbol.toUpperCase();
+    await this.securityAudit.log({
+      event: SecurityAuditEvent.ANALYSIS_REQUEST,
+      userId: options?.userId ?? null,
+      metadata: {
+        symbol: normalized,
+        time_horizon: context.time_horizon ?? null,
+        risk_tolerance: context.risk_tolerance ?? null,
+      },
+    });
+
     const contextKey = this.buildContextKey(context);
     const cacheKey = CACHE_KEYS.stockAnalysis(symbol, contextKey);
 

@@ -10,7 +10,9 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type { Request } from 'express';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import { SecurityAuditEvent } from '../../core/enums/security-audit-event.enum';
 import { serializePreferences } from '../../core/utils/preferences.util';
+import { SecurityAuditService } from '../audit/security-audit.service';
 import { UpdatePreferencesDto } from '../users/dto/update-preferences.dto';
 import { GuestSessionService } from './guest-session.service';
 
@@ -20,6 +22,7 @@ export class GuestController {
   constructor(
     private readonly guestSessions: GuestSessionService,
     private readonly config: ConfigService,
+    private readonly securityAudit: SecurityAuditService,
   ) {}
 
   @Post('session')
@@ -32,6 +35,12 @@ export class GuestController {
     if (req.session.cookie) {
       req.session.cookie.maxAge = ttlDays * 86_400_000;
     }
+
+    await this.securityAudit.log({
+      event: SecurityAuditEvent.GUEST_SESSION_CREATED,
+      req,
+      metadata: { guestId: guest.sessionToken },
+    });
 
     return {
       data: {

@@ -16,6 +16,7 @@ interface ErrorBody {
   details?: Record<string, unknown>;
   timestamp: string;
   path: string;
+  requestId?: string;
 }
 
 @Catch()
@@ -42,6 +43,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       error: HttpStatus[statusCode],
       timestamp: new Date().toISOString(),
       path: request.url,
+      requestId: request.requestId,
     };
 
     if (details && Object.keys(details).length > 0) {
