@@ -2,9 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CACHE_KEYS } from '../../core/constants/cache-keys.constant';
 import { FINANCIAL_DISCLAIMER } from '../../core/constants/disclaimer.constant';
-import {
-  ResourceNotFound,
-} from '../../core/exceptions/http.errors';
+import { ResourceNotFound } from '../../core/exceptions/http.errors';
 import type {
   AnalysisContext,
   CachedStockAnalysis,

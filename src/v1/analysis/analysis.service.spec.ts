@@ -134,13 +134,17 @@ describe('AnalysisService', () => {
       new ResourceNotFound('Market data unavailable'),
     );
 
-    await expect(service.analyze('MTNN.NL')).rejects.toMatchObject({
-      message: expect.stringContaining('not available for this exchange'),
-      details: {
-        reason: HISTORY_UNAVAILABLE_REASON,
-        symbol: 'MTNN.NL',
-        exchange: 'NIGERIAN STOCK EXCHANGE',
-      },
+    const error: unknown = await service
+      .analyze('MTNN.NL')
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ResourceNotFound);
+    const notFound = error as ResourceNotFound;
+    expect(notFound.message).toContain('not available for this exchange');
+    expect(notFound.details).toEqual({
+      reason: HISTORY_UNAVAILABLE_REASON,
+      symbol: 'MTNN.NL',
+      exchange: 'NIGERIAN STOCK EXCHANGE',
     });
   });
 });
