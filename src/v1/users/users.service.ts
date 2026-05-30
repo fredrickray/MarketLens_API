@@ -54,6 +54,15 @@ export class UsersService {
       .exec();
   }
 
+  async findByEmailWithPasswordReset(
+    email: string,
+  ): Promise<UserDocument | null> {
+    return this.userModel
+      .findOne({ email: email.toLowerCase().trim() })
+      .select('+passwordHash +passwordResetOtpHash')
+      .exec();
+  }
+
   async findById(id: string): Promise<UserDocument> {
     const user = await this.userModel.findById(id).exec();
     if (!user) {
@@ -83,6 +92,42 @@ export class UsersService {
   async incrementVerificationOtpAttempts(userId: string): Promise<void> {
     await this.userModel.findByIdAndUpdate(userId, {
       $inc: { verificationOtpAttempts: 1 },
+    });
+  }
+
+  async setPasswordResetOtp(
+    userId: string,
+    hash: string,
+    expiresAt: Date,
+  ): Promise<void> {
+    await this.userModel.findByIdAndUpdate(userId, {
+      $set: {
+        passwordResetOtpHash: hash,
+        passwordResetOtpExpiresAt: expiresAt,
+        passwordResetOtpAttempts: 0,
+      },
+    });
+  }
+
+  async incrementPasswordResetOtpAttempts(userId: string): Promise<void> {
+    await this.userModel.findByIdAndUpdate(userId, {
+      $inc: { passwordResetOtpAttempts: 1 },
+    });
+  }
+
+  async updatePasswordAndClearResetOtp(
+    userId: string,
+    passwordHash: string,
+  ): Promise<void> {
+    await this.userModel.findByIdAndUpdate(userId, {
+      $set: {
+        passwordHash,
+        passwordResetOtpHash: null,
+        passwordResetOtpExpiresAt: null,
+        passwordResetOtpAttempts: 0,
+        loginAttempts: 0,
+        loginCooldown: null,
+      },
     });
   }
 

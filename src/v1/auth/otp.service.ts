@@ -52,4 +52,39 @@ export class OtpService {
       throw new BadRequest('Invalid verification code.');
     }
   }
+
+  async issuePasswordResetOtp(userId: string): Promise<string> {
+    const code = randomInt(100000, 999999).toString();
+    const hash = await bcrypt.hash(code, 10);
+    const expiresAt = new Date(Date.now() + this.otpTtlMinutes * 60 * 1000);
+    await this.users.setPasswordResetOtp(userId, hash, expiresAt);
+    return code;
+  }
+
+  async assertValidPasswordResetOtp(
+    user: UserDocument,
+    plainOtp: string,
+  ): Promise<void> {
+    if (!user.passwordResetOtpHash || !user.passwordResetOtpExpiresAt) {
+      throw new BadRequest(
+        'No password reset code is active for this account.',
+      );
+    }
+
+    if (new Date() > user.passwordResetOtpExpiresAt) {
+      throw new BadRequest('Reset code has expired. Request a new one.');
+    }
+
+    if ((user.passwordResetOtpAttempts ?? 0) >= this.maxOtpAttempts) {
+      throw new TooManyRequests(
+        'Too many invalid attempts. Request a new reset code.',
+      );
+    }
+
+    const ok = await bcrypt.compare(plainOtp, user.passwordResetOtpHash);
+    if (!ok) {
+      await this.users.incrementPasswordResetOtpAttempts(String(user._id));
+      throw new BadRequest('Invalid reset code.');
+    }
+  }
 }

@@ -32,4 +32,19 @@ export class StocksService {
       };
     });
   }
+
+  getHistory(symbol: string, days?: number) {
+    return this.marketData.getHistoricalSeries(symbol, days).then((series) => {
+      const { cached, ...data } = series;
+      return {
+        data,
+        meta: {
+          cached,
+          provider: series.provider,
+          days: data.prices.length,
+        },
+        disclaimer: FINANCIAL_DISCLAIMER,
+      };
+    });
+  }
 }

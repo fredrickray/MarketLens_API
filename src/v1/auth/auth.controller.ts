@@ -25,6 +25,7 @@ import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { ExchangeOAuthCodeDto } from './dto/exchange-oauth-code.dto';
 import { GoogleOAuthConfiguredGuard } from './guards/google-oauth-configured.guard';
+import { ForgotPasswordDto, ResetPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResendOtpDto } from './dto/resend-otp.dto';
@@ -78,6 +79,30 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   resendOtp(@Body() dto: ResendOtpDto) {
     return this.auth.resendOtp(dto);
+  }
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() dto: ForgotPasswordDto, @Req() req: Request) {
+    const result = await this.auth.forgotPassword(dto);
+    await this.securityAudit.log({
+      event: SecurityAuditEvent.PASSWORD_RESET_REQUESTED,
+      email: dto.email,
+      req,
+    });
+    return result;
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() dto: ResetPasswordDto, @Req() req: Request) {
+    const result = await this.auth.resetPassword(dto);
+    await this.securityAudit.log({
+      event: SecurityAuditEvent.PASSWORD_RESET_COMPLETED,
+      email: dto.email,
+      req,
+    });
+    return result;
   }
 
   @Post('signin')
