@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CACHE_KEYS } from '../../core/constants/cache-keys.constant';
 import { FINANCIAL_DISCLAIMER } from '../../core/constants/disclaimer.constant';
+import { ResourceNotFound } from '../../core/exceptions/http.errors';
 import type {
   AnalysisContext,
   CachedStockAnalysis,
@@ -17,6 +18,11 @@ import { SecurityAuditService } from '../audit/security-audit.service';
 import { ComplianceService } from '../recommendations/compliance.service';
 import { RecommendationAuditService } from '../recommendations/recommendation-audit.service';
 import { RecommendationsService } from '../recommendations/recommendations.service';
+
+export const HISTORY_UNAVAILABLE_REASON = 'HISTORY_UNAVAILABLE';
+
+const HISTORY_UNAVAILABLE_MESSAGE =
+  'AI analysis is not available for this exchange. Price history is required, and our free market-data providers do not cover historical prices for this listing yet. Quotes and news may still be available.';
 
 @Injectable()
 export class AnalysisService {
@@ -67,12 +73,22 @@ export class AnalysisService {
       return response;
     }
 
-    const [overviewPayload, history] = await Promise.all([
-      this.marketData.getOverview(symbol),
-      this.marketData.getHistoricalSeries(symbol),
-    ]);
-
+    const overviewPayload = await this.marketData.getOverview(symbol);
     const { cached: overviewCached, ...overview } = overviewPayload;
+
+    let history;
+    try {
+      history = await this.marketData.getHistoricalSeries(symbol);
+    } catch (error) {
+      if (error instanceof ResourceNotFound) {
+        throw new ResourceNotFound(HISTORY_UNAVAILABLE_MESSAGE, {
+          reason: HISTORY_UNAVAILABLE_REASON,
+          symbol: overview.symbol,
+          exchange: overview.exchange ?? null,
+        });
+      }
+      throw error;
+    }
 
     const mlContext: MlPredictContext = {
       time_horizon: context.time_horizon,
