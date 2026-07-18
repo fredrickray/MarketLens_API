@@ -23,6 +23,19 @@ import {
 
 export type MarketProviderName = 'finnhub' | 'alpha-vantage' | 'yahoo' | 'mock';
 
+interface ProfileEnrichmentProvider {
+  getProfileEnrichment(symbol: string): Promise<Partial<StockOverview>>;
+}
+
+function hasProfileEnrichment(
+  provider: MarketDataProvider,
+): provider is MarketDataProvider & ProfileEnrichmentProvider {
+  return (
+    typeof (provider as Partial<ProfileEnrichmentProvider>)
+      .getProfileEnrichment === 'function'
+  );
+}
+
 @Injectable()
 export class MarketDataService {
   private readonly logger = new Logger(MarketDataService.name);
@@ -88,8 +101,15 @@ export class MarketDataService {
       (p) => p.getOverview(normalized),
     );
 
+    const profileExtras = await this.fetchProfileEnrichment(
+      normalized,
+      provider,
+      overview,
+    );
+
     const enriched: StockOverview = {
       ...overview,
+      ...profileExtras,
       symbol: normalized,
       provider,
       cachedAt: new Date().toISOString(),
@@ -133,6 +153,38 @@ export class MarketDataService {
     await this.redis.setJson(cacheKey, enriched, ttl);
 
     return { ...enriched, cached: false };
+  }
+
+  /**
+   * Yahoo's free endpoint has no market cap, so when the overview came from a
+   * provider other than Finnhub and market cap is missing, fill the gap from
+   * Finnhub's company profile (when a key is configured). Failures are
+   * non-fatal: the overview is simply returned without the extra fields.
+   */
+  private async fetchProfileEnrichment(
+    symbol: string,
+    provider: string,
+    overview: StockOverview,
+  ): Promise<Partial<StockOverview>> {
+    if (provider === 'finnhub' || overview.marketCap !== undefined) {
+      return {};
+    }
+    const finnhub = this.providerMap.get('finnhub');
+    if (!finnhub?.isConfigured() || !hasProfileEnrichment(finnhub)) {
+      return {};
+    }
+
+    try {
+      const extras = await finnhub.getProfileEnrichment(symbol);
+      return Object.fromEntries(
+        Object.entries(extras).filter(([, value]) => value !== undefined),
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Profile enrichment failed for ${symbol}: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
+      return {};
+    }
   }
 
   async warmSymbol(symbol: string): Promise<void> {

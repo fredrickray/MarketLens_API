@@ -27,6 +27,10 @@ interface YahooChartResponse {
     result?: Array<{
       meta?: {
         symbol?: string;
+        shortName?: string;
+        longName?: string;
+        exchangeName?: string;
+        fullExchangeName?: string;
         currency?: string;
         regularMarketPrice?: number;
         chartPreviousClose?: number;
@@ -34,6 +38,8 @@ interface YahooChartResponse {
         regularMarketDayHigh?: number;
         regularMarketDayLow?: number;
         regularMarketOpen?: number;
+        fiftyTwoWeekHigh?: number;
+        fiftyTwoWeekLow?: number;
       };
     }>;
   };
@@ -101,8 +107,11 @@ export class YahooProvider implements MarketDataProvider {
     const quote = this.mapQuote(symbol, meta);
     return {
       symbol,
-      name: meta.symbol ?? symbol,
+      name: meta.longName ?? meta.shortName ?? meta.symbol ?? symbol,
+      exchange: meta.fullExchangeName ?? meta.exchangeName,
       quote,
+      fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh,
+      fiftyTwoWeekLow: meta.fiftyTwoWeekLow,
       provider: this.name,
     };
   }
