@@ -40,6 +40,15 @@ export class User {
   @Prop({ default: 0 })
   verificationOtpAttempts!: number;
 
+  @Prop({ type: String, select: false, default: null })
+  passwordResetOtpHash?: string | null;
+
+  @Prop({ type: Date, default: null })
+  passwordResetOtpExpiresAt?: Date | null;
+
+  @Prop({ default: 0 })
+  passwordResetOtpAttempts!: number;
+
   @Prop({ type: Date, default: null })
   loginCooldown?: Date | null;
 

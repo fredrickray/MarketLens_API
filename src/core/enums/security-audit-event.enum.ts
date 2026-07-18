@@ -8,6 +8,8 @@ export enum SecurityAuditEvent {
   LOGOUT = 'logout',
   GUEST_SESSION_CREATED = 'guest_session_created',
   GUEST_MERGE = 'guest_merge',
+  PASSWORD_RESET_REQUESTED = 'password_reset_requested',
+  PASSWORD_RESET_COMPLETED = 'password_reset_completed',
   ALERT_CREATED = 'alert_created',
   ALERT_DELETED = 'alert_deleted',
   ANALYSIS_REQUEST = 'analysis_request',

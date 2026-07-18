@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CACHE_KEYS } from '../../core/constants/cache-keys.constant';
 import { FINANCIAL_DISCLAIMER } from '../../core/constants/disclaimer.constant';
+import { TimeHorizon } from '../../core/enums/time-horizon.enum';
 import { ResourceNotFound } from '../../core/exceptions/http.errors';
 import type {
   AnalysisContext,
@@ -115,6 +116,10 @@ export class AnalysisService {
       symbol: overview.symbol,
       recommendation,
       overview,
+      context: {
+        time_horizon: context.time_horizon ?? TimeHorizon.MEDIUM,
+        risk_tolerance: context.risk_tolerance ?? 'medium',
+      },
       model: {
         version: mlResponse.model_version,
         mode: this.ml.getMode(),

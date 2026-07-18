@@ -108,6 +108,10 @@ describe('AnalysisService', () => {
 
     expect(result.data.symbol).toBe('AAPL');
     expect(result.data.recommendation.action).toBe(RecommendationAction.BUY);
+    expect(result.data.context).toEqual({
+      time_horizon: 'medium',
+      risk_tolerance: 'medium',
+    });
     expect(result.compliance.isInformationalOnly).toBeDefined();
     expect(result.compliance.rulesApplied).toBeDefined();
     expect(result.disclaimer).toBeDefined();

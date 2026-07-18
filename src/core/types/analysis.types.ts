@@ -22,6 +22,10 @@ export interface StockAnalysisResult {
   symbol: string;
   recommendation: ProductRecommendation;
   overview: StockOverview;
+  context: {
+    time_horizon: TimeHorizon;
+    risk_tolerance: 'low' | 'medium' | 'high';
+  };
   model: {
     version?: string;
     mode: MlServiceMode;

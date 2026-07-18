@@ -12,6 +12,10 @@ import type { UserDocument } from '../users/schemas/user.schema';
 import { UsersService } from '../users/users.service';
 import { MailService } from '../mail/mail.interface';
 import type { LoginDto } from './dto/login.dto';
+import type {
+  ForgotPasswordDto,
+  ResetPasswordDto,
+} from './dto/forgot-password.dto';
 import type { RegisterDto } from './dto/register.dto';
 import type { ResendOtpDto } from './dto/resend-otp.dto';
 import type { VerifyEmailDto } from './dto/verify-email.dto';
@@ -143,6 +147,62 @@ export class AuthService {
     const user = await this.users.findById(userId);
     await this.users.resetLoginAttempts(userId);
     return this.issueAuthResponse(user);
+  }
+
+  /**
+   * Always returns a generic message to avoid email enumeration.
+   * Only issues a reset code for verified accounts that have a password.
+   */
+  async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
+    const user = await this.users.findByEmailWithPasswordReset(dto.email);
+    if (user?.passwordHash && user.isVerified) {
+      const code = await this.otp.issuePasswordResetOtp(String(user._id));
+      await this.mail.sendMail({
+        to: user.email,
+        subject: 'Reset your password — MarketLens',
+        templateName: 'password-reset',
+        placeholders: {
+          otp: code,
+          firstName: user.firstName,
+          user_email: user.email,
+        },
+      });
+    }
+    return {
+      message:
+        'If an account with that email exists, a password reset code has been sent.',
+    };
+  }
+
+  async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
+    const user = await this.users.findByEmailWithPasswordReset(dto.email);
+    if (!user?.passwordHash) {
+      throw new BadRequest('Invalid email or reset code.');
+    }
+    await this.otp.assertValidPasswordResetOtp(user, dto.otp);
+    const passwordHash = await bcrypt.hash(dto.newPassword, 12);
+    await this.users.updatePasswordAndClearResetOtp(
+      String(user._id),
+      passwordHash,
+    );
+    const appUrl =
+      this.config.get<string>('APP_PUBLIC_URL')?.trim() ||
+      'http://localhost:3000';
+    await this.mail.sendMail({
+      to: user.email,
+      subject: 'Your password was updated — MarketLens',
+      templateName: 'password-reset-success',
+      placeholders: {
+        user_name: user.firstName,
+        changed_at: new Date().toUTCString(),
+        reset_url: `${appUrl}/forgot-password`,
+        support_email:
+          this.config.get<string>('MAIL_FROM') ?? 'noreply@marketlens.local',
+      },
+    });
+    return {
+      message: 'Password updated. You can sign in with your new password.',
+    };
   }
 
   /** Public helper for Google OAuth callback (and tests). */
