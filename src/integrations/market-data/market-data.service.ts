@@ -73,12 +73,19 @@ export class MarketDataService {
       };
     }
 
-    const { results, provider } = await this.executeWithFallback((p) =>
-      p.searchSymbols(normalizedQuery, limit),
+    // A provider can "succeed" with zero matches (e.g. Yahoo has no Nigerian
+    // Exchange listings), so empty results also fall through to the next
+    // provider in the chain.
+    const { results, provider } = await this.executeWithFallback(
+      (p) => p.searchSymbols(normalizedQuery, limit),
+      { fallbackOnEmpty: (r) => r.length === 0 },
     );
 
-    const ttl = this.config.get<number>('market.searchCacheTtlSeconds') ?? 300;
-    await this.redis.setJson(cacheKey, results, ttl);
+    if (results.length > 0) {
+      const ttl =
+        this.config.get<number>('market.searchCacheTtlSeconds') ?? 300;
+      await this.redis.setJson(cacheKey, results, ttl);
+    }
 
     return { results, cached: false, provider };
   }
@@ -203,6 +210,7 @@ export class MarketDataService {
 
   private async executeWithFallback<T>(
     fn: (provider: MarketDataProvider) => Promise<T>,
+    options: { fallbackOnEmpty?: (results: T) => boolean } = {},
   ): Promise<{ results: T; provider: string }> {
     const chain = this.getProviderChain();
     if (chain.length === 0) {
@@ -210,10 +218,15 @@ export class MarketDataService {
     }
 
     const errors: string[] = [];
+    let emptyResult: { results: T; provider: string } | null = null;
 
     for (const provider of chain) {
       try {
         const results = await fn(provider);
+        if (options.fallbackOnEmpty?.(results)) {
+          emptyResult ??= { results, provider: provider.name };
+          continue;
+        }
         return { results, provider: provider.name };
       } catch (error) {
         const message =
@@ -223,6 +236,10 @@ export class MarketDataService {
           `Provider ${provider.name} failed, trying next fallback`,
         );
       }
+    }
+
+    if (emptyResult) {
+      return emptyResult;
     }
 
     throw new ResourceNotFound(`Market data unavailable. ${errors.join('; ')}`);
